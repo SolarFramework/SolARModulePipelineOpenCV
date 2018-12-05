@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<xpcf-registry>
+    <module uuid="afab90cb-b358-4222-aab1-2558d59ef4db" name="SolarModuleExample" path="$BCOMDEVROOT/bcomBuild/SolARModuleExample/0.1.0/lib/x86_64/shared">
+	
+        <component uuid="59e251eb-4465-428a-986f-e62deb859343" description="ExampleComponent1">
+                <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" description="IComponentIntrospect"/>
+                <interface uuid="b713caa4-832d-4d2e-9cc1-651e33fe49c2" description="IInterface1"/>
+        </component>
+		
+		<component uuid="5a5ff620-dace-4e84-861b-cd262e0310ba" description="ExampleComponent2">
+                <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" description="IComponentIntrospect"/>
+                <interface uuid="68f7f567-a56a-4e3b-b8f1-bad6cd08ebf6" description="IInterface2"/>
+        </component>
+
+    </module>    
+</xpcf-registry>

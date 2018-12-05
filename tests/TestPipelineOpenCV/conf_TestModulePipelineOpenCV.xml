@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<xpcf-registry>
+
+    <module uuid="6430e0af-f3f9-4643-baf6-a7e21c581d1c" name="SolARModulePipelineOpenCV" description="SolARModulePipelineOpenCV" path="$BCOMDEVROOT/bcomBuild/SolARModulePipelineOpenCV/0.1.0/lib/x86_64/shared">
+        <component uuid="4bf453a3-5dee-451a-907c-472a278be26c" name="PipelineOPenCV" description="PipelineOPenCV">
+                <interface uuid="125f2007-1bf9-421d-9367-fbdc1210d006" name="IComponentIntrospect" description="IComponentIntrospect"/>
+                <interface uuid="ef4baacc-5906-4c9c-a8db-48ba3a403e40" name="IPipeline" description="IPipeline"/>
+        </component>	
+    </module>    
+	
+    </xpcf-registry>
