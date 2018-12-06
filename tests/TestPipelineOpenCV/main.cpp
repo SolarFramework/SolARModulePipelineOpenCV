@@ -17,8 +17,16 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <thread>         // std::this_thread::sleep_for
+#include <chrono>         // std::chrono::seconds
+
 
 #include <boost/log/core.hpp>
+#include "api/display/IImageViewer.h"
+#include "api/display/I3DOverlay.h"
+#include "api/input/files/IMarker2DNaturalImage.h"
+
+
 
 // ADD MODULES TRAITS HEADERS HERE
 
@@ -43,6 +51,7 @@ using namespace SolAR;
 
 using namespace SolAR::MODULES::OPENCV;
 using namespace SolAR::api;
+namespace xpcf  = org::bcom::xpcf;
 
 
 
@@ -78,32 +87,59 @@ int main(int argc, char **argv) {
     }
 
     auto pipeline=xpcfComponentManager->create<SolAR::MODULES::PIPELINE::Pipeline>()->bindTo<SolAR::api::pipeline::IIPipeline>();
+    SRef<Image> camImage;
+    Transform3Df pose;
+    SolAR::api::pipeline::PipelineReturnCode retCode;
+
+    auto camera = xpcfComponentManager->create<SolARCameraOpencv>()->bindTo<input::devices::ICamera>();
+    auto imageViewerResult = xpcfComponentManager->create<SolARImageViewerOpencv>()->bindTo<display::IImageViewer>();
+    auto overlay3DComponent = xpcfComponentManager->create<SolAR3DOverlayBoxOpencv>()->bindTo<display::I3DOverlay>();
+    auto marker = xpcfComponentManager->create<SolARMarker2DNaturalImageOpencv>()->bindTo<input::files::IMarker2DNaturalImage>();
+
+    std::pair<SRef<SolAR::datastructure::Image>, SolAR::datastructure::Transform3Df> result;
+
+
+    LOG_INFO("LOAD MARKER IMAGE ");
+    SRef<Image> refImage;
+
+    marker->loadMarker();
+    marker->getImage(refImage);
+    // NOT WORKING ! Set the size of the box to the size of the natural image marker
+    overlay3DComponent->bindTo<xpcf::IConfigurable>()->getProperty("size")->setFloatingValue(marker->getWidth(),0);
+    overlay3DComponent->bindTo<xpcf::IConfigurable>()->getProperty("size")->setFloatingValue(marker->getHeight(),1);
+    overlay3DComponent->bindTo<xpcf::IConfigurable>()->getProperty("size")->setFloatingValue(marker->getHeight()/2.0f,2);
+
+    CamCalibration intrinsic_param = camera->getIntrinsicsParameters();
+    CamDistortion  distorsion_param = camera->getDistorsionParameters();
+    overlay3DComponent->setCameraParameters(intrinsic_param, distorsion_param);
+
 
     pipeline->init("conf_NaturalImageMarker.xml");
     pipeline->start();
     int i=0;
     while(true){
-        i=1;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        i++;
+        if(i>10000 && 0){
+            retCode=pipeline->stop();
+            break;
+        }
+        retCode=pipeline->update(result);
+        if(retCode==SolAR::api::pipeline::PipelineReturnCode::_UPDATE_OK){
+            LOG_INFO("a valid pose is available \n");
+            camImage = result.first->copy();
+            pose = result.second;
+            overlay3DComponent->draw(pose, camImage);
+            std::cout << pose.matrix() <<"\n";
+
+            if (imageViewerResult->display(camImage) == SolAR::FrameworkReturnCode::_STOP){
+                retCode=pipeline->stop();
+                break;
+            }
+        }
+
+        LOG_INFO("i: {} \n", i);
     }
-    pipeline->stop();
-    pipeline->update();
 
-#if 0
-
-
-
-    auto c1=xpcfComponentManager->create<SolAR::MODULES::EXAMPLE::Component1>()->bindTo<SolAR::api::example::IInterface1>();
-    auto c2=xpcfComponentManager->create<SolAR::MODULES::EXAMPLE::Component2>()->bindTo<SolAR::api::example::IInterface2>();
-
-
-    if (c1){
-        c1->function1(6);
-    }
-
-    if (c2){
-        c2->function2(5);
-    }
-
-#endif
     return 0;
 }
