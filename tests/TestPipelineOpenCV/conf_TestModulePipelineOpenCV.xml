@@ -84,6 +84,28 @@
 		<component uuid="efcdb590-c570-11e7-abc4-cec278b6b50a"> <!-- SolARMarker2DNaturalImageOpencv -->
                 <property name="filePath" type="string" value="grafMarker.yml"/>
                 </component>
+				
+		<component uuid="e42d6526-9eb1-4f8a-bb68-53e06f09609c"> <!-- SolARImageLoaderOpencv -->
+                <property name="filePath" type="string" value="graf1.png"/>
+                </component>
+
+		<component uuid="2db01f59-9793-4cd5-8e13-b25d0ed5735b"> <!-- SolAR3DOverlayBoxOpencv -->
+            <property name="position"  type="Float">
+				<value>0</value>
+				<value>0</value>
+				<value>0</value>
+			</property>
+			<property name="orientation"  type="Float">
+				<value>0.0</value>
+				<value>0.0</value>
+				<value>0.0</value>
+			</property>
+			<property name="size"  type="Float">
+				<value>0.285</value>
+				<value>0.197</value>
+				<value>0.1</value>
+			</property>
+        </component>
 
  </configuration>
 	
