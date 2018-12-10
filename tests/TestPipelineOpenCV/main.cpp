@@ -17,8 +17,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <thread>         // std::this_thread::sleep_for
-#include <chrono>         // std::chrono::seconds
 
 
 #include <boost/log/core.hpp>
@@ -26,7 +24,8 @@
 #include "api/display/I3DOverlay.h"
 #include "api/input/files/IMarker2DNaturalImage.h"
 
-
+#include <thread>
+#include <chrono>
 
 // ADD MODULES TRAITS HEADERS HERE
 
@@ -116,30 +115,37 @@ int main(int argc, char **argv) {
 
     pipeline->init("conf_NaturalImageMarker.xml");
     pipeline->start();
-    int i=0;
+    clock_t start, end;
+    int count = 0;
+    start = clock();
+
+
     while(true){
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        i++;
-        if(i>10000 && 0){
-            retCode=pipeline->stop();
-            break;
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
         retCode=pipeline->update(result);
         if(retCode==SolAR::api::pipeline::PipelineReturnCode::_UPDATE_OK){
-            LOG_INFO("a valid pose is available \n");
+            count++;
             camImage = result.first->copy();
             pose = result.second;
-            overlay3DComponent->draw(pose, camImage);
-            std::cout << pose.matrix() <<"\n";
 
+            if(pose(3,3)!=0.f){
+                LOG_INFO("a valid pose is available \n");
+                overlay3DComponent->draw(pose, camImage);
+                LOG_DEBUG("pose.matrix():\n {} \n",pose.matrix())
+            }
             if (imageViewerResult->display(camImage) == SolAR::FrameworkReturnCode::_STOP){
                 retCode=pipeline->stop();
                 break;
             }
         }
 
-        LOG_INFO("i: {} \n", i);
     }
+
+    // display stats on frame rate
+    end = clock();
+    double duration = double(end - start) / CLOCKS_PER_SEC;
+    printf("\n\nElasped time is %.2lf seconds.\n", duration);
+    printf("Number of processed frame per second : %8.2f\n", count / duration);
 
     return 0;
 }
