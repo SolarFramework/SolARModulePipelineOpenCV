@@ -87,14 +87,15 @@ namespace SolAR::MODULES::PIPELINE {
 
             std::vector<SRef <Point2Df>> m_refImgCorners;
 
-            Transform3Df m_pose;
+            Transform3Df m_pose,m_emptyPose;
 
             // Threads : input/output buffers
             org::bcom::xpcf::DropBuffer< SRef<Image> >  m_workingBufferCamImages;
             org::bcom::xpcf::DropBuffer< std::pair<SRef<Image>, Transform3Df> > m_pipelineOutBuffer;
 
-            xpcf::DelegateTask* m_taskGetProcessOneView;
 
+            void initProcessOneViewThread();
+            xpcf::DelegateTask* m_taskGetProcessOneView;
 
     };
 

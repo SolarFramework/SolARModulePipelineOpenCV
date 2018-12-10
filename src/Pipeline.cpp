@@ -149,7 +149,25 @@ namespace SolAR::MODULES::PIPELINE {
 
         m_stopFlag=false;
 
-        std::function<void(void)> processOneView = [&](){
+        // init threads
+        initProcessOneViewThread();
+
+        for(int i=0;i<3;i++)
+            for(int j=0;j<3;j++)
+                m_emptyPose(i,j)=0.f;
+
+        return PipelineReturnCode::_SUCCESS;
+    }
+
+    /*
+    *
+    *******************************************************************************************************
+    *
+    */
+    void Pipeline::initProcessOneViewThread() {
+
+        // declaration of the thread function
+        auto processOneView = [this](){
 
             if( m_stopFlag == true)
                 return;
@@ -159,7 +177,8 @@ namespace SolAR::MODULES::PIPELINE {
                 return;
             }
 
-            std::cout << ++m_countFrame << "\n";
+            m_countFrame++;
+            m_pose=m_emptyPose;
 
             // detect keypoints in camera image
             m_kpDetector->detect(m_camImage, m_camKeypoints);
@@ -213,8 +232,6 @@ namespace SolAR::MODULES::PIPELINE {
                         /* The pose last parameter can not be 0, so this is an error case*/
                         if (m_pose(3, 3) != 0.0)
                         {
-                            if(m_pipelineOutBuffer.empty())
-                                 m_pipelineOutBuffer.push(std::make_pair(m_camImage,m_pose));
                             LOG_INFO("valid pose detected for this frame");
                         }
                         else
@@ -226,14 +243,17 @@ namespace SolAR::MODULES::PIPELINE {
                     else /* when homography is not valid*/
                         LOG_INFO("Wrong homography for this frame");
                 }
-            }
+             }
+            if(m_pipelineOutBuffer.empty())
+                 m_pipelineOutBuffer.push(std::make_pair(m_camImage,m_pose));
             return;
         };
 
         m_taskGetProcessOneView = new xpcf::DelegateTask(processOneView);
 
-        return PipelineReturnCode::_SUCCESS;
+        return;
     }
+
     /*
     *
     *******************************************************************************************************
@@ -259,6 +279,7 @@ namespace SolAR::MODULES::PIPELINE {
     PipelineReturnCode Pipeline::start() {
 
         m_stopFlag=false;
+        m_countFrame=0;
         m_taskGetProcessOneView->start();
         LOG_INFO("Pipeline has Started: \n");
         return PipelineReturnCode::_SUCCESS;
@@ -273,6 +294,7 @@ namespace SolAR::MODULES::PIPELINE {
         m_stopFlag=true;
         m_taskGetProcessOneView->stop();
         LOG_INFO("Pipeline has stopped: \n");
+
         return PipelineReturnCode::_SUCCESS;
     }
 
