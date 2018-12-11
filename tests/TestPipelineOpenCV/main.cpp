@@ -30,15 +30,12 @@
 
 // ADD MODULES TRAITS HEADERS HERE
 
-#include "SolARModulePipelineOpenCV_traits.h"
 
 // ADD XPCF HEADERS HERE
 #include "xpcf/xpcf.h"
 
 // ADD COMPONENTS HEADERS HERE
 
-
-#include "api/pipeline/IPipeline.h"
 
 #include "core/Log.h"
 
@@ -54,8 +51,12 @@ using namespace SolAR::api;
 namespace xpcf  = org::bcom::xpcf;
 
 
+#include "api/pipeline/IPipeline.h"
+#include "SolARModulePipelineOpenCV_traits.h"
 
-int mainLinux(int argc, char **argv) {
+#ifdef linux
+
+int main(int argc, char **argv) {
 
     std::cout << "hello\n";
 
@@ -151,13 +152,16 @@ int mainLinux(int argc, char **argv) {
     return 0;
 }
 
+
+#else
+
 typedef int(WINAPI* FNPTR_INIT)(const char *);
 typedef int(WINAPI* FNPTR_START)(void);
 typedef int(WINAPI* FNPTR_STOP)(void);
 typedef int(WINAPI* FNPTR_UPDATE)(unsigned char* &imageData ,int& width, int& height, unsigned int& type, float* &pose);
 
 
-int mainWindows(int argc, char **argv) {  //windows
+int main(int argc, char **argv) {  //windows
 
     std::cout << "hello\n";
 
@@ -311,13 +315,6 @@ int mainWindows(int argc, char **argv) {  //windows
     return 0;
 }
 
-
-int main(int argc, char **argv) {
-
-#ifdef linux
-    return mainLinux(argc, argv);
-#else
-    return mainWindows(argc, argv);
 #endif
 
-}
+

@@ -39,9 +39,11 @@ INCLUDEPATH += interfaces/
 HEADERS += interfaces/ExampleAPI.h \
     interfaces/SolARModulePipelineOpenCV_traits.h \
     interfaces/Pipeline.h \
+    interfaces/ExportPipeline.h
 
 SOURCES += src/SolARModulePipelineOpenCV.cpp\
-           src/Pipeline.cpp
+           src/Pipeline.cpp \
+    src/ExportPipeline.cpp
 	
 unix {
     QMAKE_CXXFLAGS += -Wignored-qualifiers

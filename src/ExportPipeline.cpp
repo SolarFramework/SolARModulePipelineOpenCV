@@ -39,21 +39,16 @@ using namespace SolAR::api::solver::pose;
 using namespace SolAR::api::pipeline;
 
 
-XPCF_DEFINE_FACTORY_CREATE_INSTANCE(SolAR::MODULES::PIPELINE::Pipeline)
-
-
-namespace SolAR::MODULES::PIPELINE {
 
     /*
     *
     *******************************************************************************************************
     *
     */
-    Pipeline::Pipeline():ConfigurableBase(xpcf::toUUID<Pipeline>()){
-       addInterface<api::pipeline::IIPipeline>(this);
-       SRef<xpcf::IPropertyMap> params = getPropertyRootNode();
-
+    ExportPipeline::ExportPipeline(){
        m_countFrame=0;
+       m_initOK=false;
+       m_startedOK=false;
        LOG_DEBUG(" Pipeline constructor");
     }
 
@@ -62,7 +57,7 @@ namespace SolAR::MODULES::PIPELINE {
     *******************************************************************************************************
     *
     */
-    Pipeline::~Pipeline()
+    ExportPipeline::~ExportPipeline()
     {
         LOG_DEBUG(" Pipeline destructor")
     }
@@ -72,7 +67,7 @@ namespace SolAR::MODULES::PIPELINE {
     *******************************************************************************************************
     *
     */
-    PipelineReturnCode Pipeline::init(const char* confFileName) {
+    ExportPipeline::ReturnCode ExportPipeline::m_initfn(const char* confFileName) {
         LOG_INFO("Pipeline Init: confFileName = {} \n",confFileName);
 
         SRef<xpcf::IComponentManager> xpcfComponentManager = xpcf::getComponentManagerInstance();
@@ -80,7 +75,7 @@ namespace SolAR::MODULES::PIPELINE {
         if (xpcfComponentManager->load(confFileName) != org::bcom::xpcf::_SUCCESS){
 
             LOG_ERROR("Failed to load the configuration file {}", confFileName)
-            return PipelineReturnCode::_INIT_FAILED;
+            return ExportPipeline::ReturnCode::_INIT_FAILED;
 
         }
 
@@ -115,7 +110,7 @@ namespace SolAR::MODULES::PIPELINE {
         if (m_camera->start() != FrameworkReturnCode::_SUCCESS)
         {
             LOG_ERROR("Camera cannot start");
-            return PipelineReturnCode::_INIT_FAILED;
+            return ExportPipeline::ReturnCode::_INIT_FAILED;
         }
 
         // initialize pose estimation
@@ -156,7 +151,8 @@ namespace SolAR::MODULES::PIPELINE {
             for(int j=0;j<3;j++)
                 m_emptyPose(i,j)=0.f;
 
-        return PipelineReturnCode::_SUCCESS;
+        m_initOK=true;
+        return ExportPipeline::ReturnCode::_INIT_OK;
     }
 
     /*
@@ -164,7 +160,7 @@ namespace SolAR::MODULES::PIPELINE {
     *******************************************************************************************************
     *
     */
-    void Pipeline::initProcessOneViewThread() {
+    void ExportPipeline::initProcessOneViewThread() {
 
         // declaration of the thread function
         auto processOneView = [this](){
@@ -259,45 +255,117 @@ namespace SolAR::MODULES::PIPELINE {
     *******************************************************************************************************
     *
     */
-    PipelineReturnCode Pipeline::update(std::pair<SRef<Image>, Transform3Df>& pipeLineOut) {
+    ExportPipeline::ReturnCode ExportPipeline::m_updatefn(std::pair<SRef<Image>, Transform3Df>& pipeLineOut) {
 
         std::pair<SRef<Image>, Transform3Df>  element;
 
+        if(m_initOK == false || m_startedOK == false){
+            return ExportPipeline::ReturnCode::_UPDATE_FAILED;
+        }
+
         if (!m_pipelineOutBuffer.tryPop(element) ){
-            return PipelineReturnCode::_UPDATE_EMPTY;
+            return ExportPipeline::ReturnCode::_UPDATE_EMPTY;
         }
 
         pipeLineOut=element;
 
-        return PipelineReturnCode::_UPDATE_OK;
+        return ExportPipeline::ReturnCode::_UPDATE_OK;
     }
     /*
     *
     *******************************************************************************************************
     *
     */
-    PipelineReturnCode Pipeline::start() {
+    ExportPipeline::ReturnCode ExportPipeline::m_startfn() {
 
+        if(m_initOK==false){
+            LOG_INFO("Pipeline did not start: \n");
+            return ExportPipeline::ReturnCode::_START_FAILED;
+        }
         m_stopFlag=false;
         m_countFrame=0;
         m_taskGetProcessOneView->start();
         LOG_INFO("Pipeline has Started: \n");
-        return PipelineReturnCode::_SUCCESS;
+        m_startedOK=true;
+        return ExportPipeline::ReturnCode::_START_OK;
     }
     /*
     *
     *******************************************************************************************************
     *
     */
-    PipelineReturnCode Pipeline::stop() {
+    ExportPipeline::ReturnCode ExportPipeline::m_stopfn() {
 
+        if(m_initOK == false || m_startedOK == false){
+            LOG_INFO("Pipeline did not stop: \n");
+            return ExportPipeline::ReturnCode::_STOP_FAILED;
+        }
         m_stopFlag=true;
         m_taskGetProcessOneView->stop();
         LOG_INFO("Pipeline has stopped: \n");
 
-        return PipelineReturnCode::_SUCCESS;
+        return ExportPipeline::ReturnCode::_STOP_OK;
     }
 
+    ExportPipeline p;
+    ExportPipeline::ReturnCode res;
+    SRef<Image> imag;
+    Transform3Df pose;
+    float posef[9];
 
-}
+extern "C"
+{
+
+    _declspec(dllexport) int init (const char* confFileName){
+        LOG_INFO("Pipeline Init: confFileName = {} \n",confFileName);
+        res=p.m_initfn(confFileName);
+        if(res==ExportPipeline::ReturnCode::_INIT_OK)
+            return 0;
+        else
+            return 1;
+    }
+
+    _declspec(dllexport) int update(unsigned char* &imageData ,int& width, int& height, unsigned int& type, float* &poseData){
+        std::pair<SRef<Image>, Transform3Df> pipeLineOut;
+        res=p.m_updatefn(pipeLineOut);
+        if(res==ExportPipeline::ReturnCode::_UPDATE_OK){
+            imag=pipeLineOut.first->copy();
+            pose=pipeLineOut.second;
+            LOG_INFO("pose.matrix() in DLL:\n {} \n",pose.matrix())
+            poseData=pose.matrix().data();
+            width=(int)imag->getWidth();
+            height=(int)imag->getHeight();
+            imageData=(unsigned char*)imag->data();
+            type=0;
+            return 0;
+        }
+        else
+            return 1;
+    }
+
+    _declspec(dllexport) int start(void){
+        res=p.m_startfn();
+        if(res==ExportPipeline::ReturnCode::_START_OK){
+            LOG_INFO("Pipeline did Start: \n");
+            return 0;
+        }
+        else{
+            LOG_INFO("Pipeline did not Start: \n");
+            return 1;
+        }
+    }
+
+    _declspec(dllexport) int stop(){
+        res=p.m_stopfn();
+        if(res==ExportPipeline::ReturnCode::_STOP_OK){
+            LOG_INFO("Pipeline did stop: \n");
+            return 0;
+        }
+        else{
+            LOG_INFO("Pipeline did not stop: \n");
+            return 1;
+        }
+    }
+
+ }
 
